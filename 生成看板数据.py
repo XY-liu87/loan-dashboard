@@ -1195,10 +1195,12 @@ if os.path.exists(dashboard_html):
     else:
         print('[OK] dashboard_v2.html 已是加密外部文件模式，无需修改')
 
-    # 离线版同步
+    # 离线版同步（同时复制加密数据文件到离线目录）
     offline_path = os.path.join(RESULT_DIR, 'dashboard_offline.html')
     with open(offline_path, 'w', encoding='utf-8') as f:
         f.write(html)
+    import shutil
+    shutil.copy2(enc_path, os.path.join(RESULT_DIR, 'data_v2_enc.js'))
 
 print(f'\n[OK] data_v2.js: {os.path.getsize(outpath)} bytes')
 print(f'[OK] TODAY_DETAIL: {len(today_rows)} entries')
