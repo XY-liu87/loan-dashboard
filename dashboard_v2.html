@@ -1076,9 +1076,9 @@ function toggleChartLabels(canvasId) {
       }
     }
   }
-  // 只刷新当前图表
+  // 只刷新当前图表（先 resize 处理隐藏 tab 中初始化的图表）
   var chart = Chart.getChart(canvasId);
-  if (chart) chart.update();
+  if (chart) { chart.resize(); chart.update(); }
 }
 
 // 动态给每个 chart 卡片添加眼睛按钮
@@ -1127,8 +1127,9 @@ Chart.register({
       var items = meta.data;
       var count = items.length;
 
-      // 数据点太少时（≤12个）才显示标签，太多会重叠
-      if (count > 20 && !isPie) return;
+      // 横向柱状图条数多也能看（最多60），纵向柱状图限制20条避免重叠
+      var maxCount = isHorizontal ? 60 : (isPie ? 999 : 20);
+      if (count > maxCount) return;
 
       items.forEach(function(element, i) {
         var value = dataset.data[i];
@@ -2294,6 +2295,13 @@ function switchKpi(tab) {
   }
   // 重新给图表加眼睛按钮（图表可能在切tab后才渲染）
   setTimeout(initChartEyeButtons, 200);
+  // 对刚显示的图表做 resize，修复隐藏 tab 中初始化的图表尺寸问题
+  setTimeout(function() {
+    document.querySelectorAll('.tab-content.active canvas').forEach(function(c) {
+      var ch = Chart.getChart(c.id);
+      if (ch) ch.resize();
+    });
+  }, 250);
 }
 // Initial KPI render based on active tab
 (function() {
