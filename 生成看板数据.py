@@ -1185,7 +1185,7 @@ if os.path.exists(dashboard_html):
     if end_marker in html:
         # 旧版 HTML（数据内嵌），自动替换为外部引用模式
         begin_marker = '<!-- DATA_BEGIN -->'
-        new_block = begin_marker + '\n<script src="data_v2_enc.js"></script>\n<script>\n(function(){\n  var b = _D;\n  var bin = atob(b);\n  var arr = new Uint8Array(bin.length);\n  for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);\n  var js = new TextDecoder(\'utf-8\').decode(arr);\n  eval(js);\n})();\n</script>\n' + end_marker
+        new_block = begin_marker + '\n<script src="data_v2_enc.js"></script>\n<script>\ntry {\n  if (typeof _D !== \'string\') throw new Error(\'加密数据加载失败\');\n  var b = _D;\n  var bin = atob(b);\n  var arr = new Uint8Array(bin.length);\n  for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);\n  var js = new TextDecoder(\'utf-8\').decode(arr);\n  (0, eval)(js);\n} catch(e) {\n  document.getElementById(\'updateTime\').textContent = \'数据加载失败: \' + e.message;\n  console.error(\'Data decode error:\', e);\n}\n</script>\n' + end_marker
         start = html.index(begin_marker)
         end = html.index(end_marker) + len(end_marker)
         html = html[:start] + new_block + html[end:]
