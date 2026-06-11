@@ -840,7 +840,7 @@ updateTimeDisplay();
 // ============================================================
 // 登录验证 & 权限控制
 // ============================================================
-var AUTH_PASSWORDS = { 'xyzb': 'full', 'wzb': 'limited' };
+var AUTH_PASSWORDS = { 'Xy2026': 'full', 'wzb': 'limited' };
 var AUTH_LEVEL = null;  // 'full' | 'limited'
 
 // 密码2 (wzb) 只能看"今日明细"；密码1 (xyzb) 全部可见
@@ -1010,21 +1010,22 @@ function downloadTableCSV(wrapId, filename) {
   var table = wrap.querySelector('table');
   if (!table) return;
 
-  // 将格式化文本还原为原始数值
-  function rawVal(text) {
+  // 获取单元格原始数值：优先读 data-v 属性，否则回退到文本解析
+  function cellVal(td) {
+    var dv = td.getAttribute('data-v');
+    if (dv !== null && dv !== '') return dv;
+    var text = td.textContent || '';
     if (!text || text === '-' || text === '--') return '';
     var t = text.trim();
-    // "123.4万" → 1234000
+    // "123.46万" → 1234600
     if (/万$/.test(t)) {
       var n = parseFloat(t.slice(0, -1));
       return isNaN(n) ? t : Math.round(n * 10000);
     }
-    // "65.5%" → 0.655 (按小数) 或 65.5 — 这里保留百分比数值以便Excel计算
     if (/%$/.test(t)) {
       var p = parseFloat(t.slice(0, -1));
       return isNaN(p) ? t : p;
     }
-    // 纯数字直接返回
     return t;
   }
 
@@ -1041,7 +1042,7 @@ function downloadTableCSV(wrapId, filename) {
   if (tbody) {
     tbody.querySelectorAll('tr').forEach(function(tr) {
       var row = [];
-      tr.querySelectorAll('td').forEach(function(td) { row.push('"' + rawVal(td.textContent).toString().replace(/"/g,'""') + '"'); });
+      tr.querySelectorAll('td').forEach(function(td) { row.push('"' + cellVal(td).toString().replace(/"/g,'""') + '"'); });
       rows.push(row.join(','));
     });
   }
@@ -2561,11 +2562,11 @@ new Chart(document.getElementById('groupEfficiencyChart'), {
           html += `<td>${val}</td>`;
         } else {
           const cls = isSubtotal ? '' : rateClass(sec, v);
-          html += `<td class="${cls}">${(v*100).toFixed(1)}%</td>`;
+          html += `<td data-v="${v}" class="${cls}">${(v*100).toFixed(1)}%</td>`;
         }
       } else if (k === 'principal' || k === 'total' || k === 'firstAssign' || k === 'firstBack' || k === 'oldRemain' || k === 'todayOld' || k === 'diffAmount') {
         const v = parseFloat(val);
-        html += `<td>${isNaN(v) ? val : fmtWan(v)}</td>`;
+        html += `<td data-v="${isNaN(v) ? '' : v}">${isNaN(v) ? val : fmtWan(v)}</td>`;
       } else {
         html += `<td>${val}</td>`;
       }
@@ -2574,7 +2575,7 @@ new Chart(document.getElementById('groupEfficiencyChart'), {
     var grpPrincipal = parseFloat(r.principal) || 0;
     var grpToday = todayByGroup[r.group] || 0;
     var dailyPct = grpPrincipal > 0 ? (grpToday / grpPrincipal * 100) : 0;
-    html += '<td>' + (dailyPct > 0 ? dailyPct.toFixed(2) + '%' : '-') + '</td>';
+    html += '<td data-v="' + (dailyPct > 0 ? dailyPct : '') + '">' + (dailyPct > 0 ? dailyPct.toFixed(2) + '%' : '-') + '</td>';
     html += '</tr>';
   });
   html += '</tbody></table>';
@@ -2649,11 +2650,11 @@ function renderLargeGroupTable() {
         if (isNaN(v)) {
           html += '<td>' + val + '</td>';
         } else {
-          html += '<td class="' + rateClass(v) + '">' + (v * 100).toFixed(1) + '%</td>';
+          html += '<td data-v="' + v + '" class="' + rateClass(v) + '">' + (v * 100).toFixed(1) + '%</td>';
         }
       } else if (k === 'principal' || k === 'total' || k === 'firstDiff' || k === 'firstAssign' || k === 'firstBack' || k === 'todayOld') {
         v = parseFloat(val);
-        html += '<td>' + (isNaN(v) ? val : fmtWan(v)) + '</td>';
+        html += '<td data-v="' + (isNaN(v) ? '' : v) + '">' + (isNaN(v) ? val : fmtWan(v)) + '</td>';
       } else {
         html += '<td>' + val + '</td>';
       }
@@ -2706,9 +2707,9 @@ function renderSegmentTable(wrapId, collectors) {
     html += `<tr><td style="font-weight:600;">${getStaffName(r.name)}</td><td>${r.group}</td><td>${r.region}</td>`;
     [r.s1, r.s2, r.s3, r.s4, r.s5, r.s6, r.s7].forEach(v => {
       const cls = v >= thresholds.high ? 'heat-high' : v >= thresholds.mid ? 'heat-mid' : v > 0 ? 'heat-low' : '';
-      html += `<td class="${cls}">${v > 0 ? fmtYuan(v) : '-'}</td>`;
+      html += `<td data-v="${v > 0 ? v : ''}" class="${cls}">${v > 0 ? fmtYuan(v) : '-'}</td>`;
     });
-    html += `<td style="font-weight:700;">${total > 0 ? fmtYuan(total) : '-'}</td>`;
+    html += `<td data-v="${total > 0 ? total : ''}" style="font-weight:700;">${total > 0 ? fmtYuan(total) : '-'}</td>`;
     html += `</tr>`;
   });
   html += '</tbody></table>';
@@ -2836,9 +2837,9 @@ function renderGroupSegmentTable() {
     if (!gd || gd.total <= 0) return;
     html += '<tr>';
     html += '<td style="font-weight:600;">' + g + '</td>';
-    html += '<td style="font-weight:700;">' + fmtYuan(gd.total) + '</td>';
+    html += '<td data-v="' + (gd.total > 0 ? gd.total : '') + '" style="font-weight:700;">' + fmtYuan(gd.total) + '</td>';
     [gd.s1, gd.s2, gd.s3, gd.s4, gd.s5, gd.s6, gd.s7].forEach(function(v) {
-      html += '<td class="' + heatClass(v) + '">' + (v > 0 ? fmtYuan(v) : '-') + '</td>';
+      html += '<td data-v="' + (v > 0 ? v : '') + '" class="' + heatClass(v) + '">' + (v > 0 ? fmtYuan(v) : '-') + '</td>';
     });
     html += '</tr>';
   });
@@ -2852,9 +2853,9 @@ function renderGroupSegmentTable() {
   });
   html += '<tr style="font-weight:700;background:#f0f4ff;">';
   html += '<td>合计</td>';
-  html += '<td>' + fmtYuan(totalRow.total) + '</td>';
+  html += '<td data-v="' + (totalRow.total > 0 ? totalRow.total : '') + '">' + fmtYuan(totalRow.total) + '</td>';
   [totalRow.s1, totalRow.s2, totalRow.s3, totalRow.s4, totalRow.s5, totalRow.s6, totalRow.s7].forEach(function(v) {
-    html += '<td>' + (v > 0 ? fmtYuan(v) : '-') + '</td>';
+    html += '<td data-v="' + (v > 0 ? v : '') + '">' + (v > 0 ? fmtYuan(v) : '-') + '</td>';
   });
   html += '</tr>';
 
@@ -2954,6 +2955,16 @@ const cd2Active = TODAY_BREAKDOWN_CD2.filter(r => r.todayTotal > 0);
 buildRegionRankChart('cd2RankChart', cd2Active, '#f59e0b');
 
 // 明细总表（按地区+类别分别排名，试岗员工不参与排名）
+// 辅助：生成带原始数值的 <td>，下载 CSV 时读取 data-v 获取精确值
+function tdv(rawValue, displayHtml) {
+  if (rawValue === null || rawValue === undefined) return '<td>' + displayHtml + '</td>';
+  return '<td data-v="' + rawValue + '">' + displayHtml + '</td>';
+}
+function tdvNum(rawValue, formatter) {
+  var display = rawValue > 0 ? formatter(rawValue) : '-';
+  return tdv(rawValue > 0 ? rawValue : '', display);
+}
+
 function renderBreakdownTable() {
   // 使用原始数据源
   var src = (window.__ORIG_DATA && window.__ORIG_DATA.TODAY_BREAKDOWN_ALL) ? window.__ORIG_DATA.TODAY_BREAKDOWN_ALL : TODAY_BREAKDOWN_ALL;
@@ -3100,8 +3111,8 @@ function renderBreakdownTable() {
     html += `<td>${r.category}</td>`;
     html += `<td>${rankDisplay}</td>`;
     html += `<td style="font-weight:600;">${getStaffName(r.name)}</td>`;
-    html += `<td>${r.assignPrincipal > 0 ? fmtWan(r.assignPrincipal) : '-'}</td>`;
-    html += `<td>${r.cumulBack > 0 ? fmtWan(r.cumulBack) : '-'}</td>`;
+    html += tdvNum(r.assignPrincipal, fmtWan);
+    html += tdvNum(r.cumulBack, fmtWan);
     html += `<td>${r.cumulBackRate > 0 ? (r.cumulBackRate * 100).toFixed(2) + '%' : '-'}</td>`;
     // 累计与地区均值差异
     const cumulAvg = regionAvgCumulMap[r.region] || 0;
@@ -3111,11 +3122,11 @@ function renderBreakdownTable() {
     } else {
       const cumulColor = diffCumul >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
       const cumulSign = diffCumul >= 0 ? '+' : '-';
-      html += `<td style="font-weight:600;color:${cumulColor};">${cumulSign}${fmtYuan(Math.abs(diffCumul))}</td>`;
+      html += `<td data-v="${diffCumul}" style="font-weight:600;color:${cumulColor};">${cumulSign}${fmtYuan(Math.abs(diffCumul))}</td>`;
     }
-    html += `<td>${r.firstBack > 0 ? fmtYuan(r.firstBack) : '-'}</td>`;
-    html += `<td>${r.oldBack > 0 ? fmtYuan(r.oldBack) : '-'}</td>`;
-    html += `<td style="font-weight:700;">${total > 0 ? fmtYuan(total) : '-'}</td>`;
+    html += tdvNum(r.firstBack, fmtYuan);
+    html += tdvNum(r.oldBack, fmtYuan);
+    html += `<td data-v="${total}" style="font-weight:700;">${total > 0 ? fmtYuan(total) : '-'}</td>`;
     // 与上一名差异
     const diffPrev = prevDiffMap[r.name];
     if (diffPrev === null || diffPrev === undefined) {
@@ -3123,7 +3134,7 @@ function renderBreakdownTable() {
     } else {
       const prevColor = diffPrev >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
       const prevSign = diffPrev >= 0 ? '+' : '-';
-      html += `<td style="font-weight:600;color:${prevColor};">${prevSign}${fmtYuan(Math.abs(diffPrev))}</td>`;
+      html += `<td data-v="${diffPrev}" style="font-weight:600;color:${prevColor};">${prevSign}${fmtYuan(Math.abs(diffPrev))}</td>`;
     }
     // 与地区均值差异
     const regAvg = regionAvgMap[r.region] || 0;
@@ -3133,7 +3144,7 @@ function renderBreakdownTable() {
     } else {
       const avgColor = diffAvg >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
       const avgSign = diffAvg >= 0 ? '+' : '-';
-      html += `<td style="font-weight:600;color:${avgColor};">${avgSign}${fmtYuan(Math.abs(diffAvg))}</td>`;
+      html += `<td data-v="${diffAvg}" style="font-weight:600;color:${avgColor};">${avgSign}${fmtYuan(Math.abs(diffAvg))}</td>`;
     }
     html += `</tr>`;
 
@@ -3213,7 +3224,7 @@ function renderCompanyRankTable() {
     html += '<td style="font-weight:600;color:' + momColor + ';">' + (momChange !== null ? momSign + momChange.toFixed(2) + '%' : '-') + '</td>';
     html += '<td>' + r.todayProgress.toFixed(2) + '%</td>';
     html += '<td>' + (gapRate >= 0 ? '+' : '') + gapRate.toFixed(2) + '%</td>';
-    html += '<td>' + (gapAmount >= 0 ? '+' : '') + gapStr + '</td>';
+    html += '<td data-v="' + gapAmount + '">' + (gapAmount >= 0 ? '+' : '') + gapStr + '</td>';
     html += '</tr>';
   });
 
