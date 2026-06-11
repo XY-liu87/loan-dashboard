@@ -30,20 +30,18 @@
 <!-- DATA_BEGIN -->
 <script src="data_v2_enc.js"></script>
 <script>
-(function(){
-  try {
-    if (typeof _D !== 'string') throw new Error('加密数据加载失败');
-    var b = _D;
-    var bin = atob(b);
-    var arr = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    var js = new TextDecoder('utf-8').decode(arr);
-    eval(js);
-  } catch(e) {
-    document.getElementById('updateTime').textContent = '数据加载失败: ' + e.message;
-    console.error('Data decode error:', e);
-  }
-})();
+try {
+  if (typeof _D !== 'string') throw new Error('加密数据加载失败');
+  var b = _D;
+  var bin = atob(b);
+  var arr = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  var js = new TextDecoder('utf-8').decode(arr);
+  (0, eval)(js);
+} catch(e) {
+  document.getElementById('updateTime').textContent = '数据加载失败: ' + e.message;
+  console.error('Data decode error:', e);
+}
 </script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
