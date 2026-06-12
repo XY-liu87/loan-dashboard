@@ -327,7 +327,7 @@ body {
 <!-- 登录验证遮罩 -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
-    <h2>🔐 贷后数据看板</h2>
+    <h2>🔐 贷后数据看板 <span style="font-size:11px;color:#aaa;">v3.0612</span></h2>
     <p class="login-sub">请输入您的账号和密码</p>
     <input type="text" id="loginUser" placeholder="账号" autofocus>
     <input type="password" id="loginPwd" placeholder="密码">
@@ -1132,6 +1132,9 @@ function doLogin() {
   btn.disabled = true;
   btn.textContent = '登录中...';
   errEl.textContent = '';
+
+  // 模式未确定时，默认用本地模式（GitHub Pages 上更可靠）
+  if (!AUTH_MODE) AUTH_MODE = 'local';
 
   // ---- 本地模式：查本地密码表 ----
   if (AUTH_MODE === 'local') {
