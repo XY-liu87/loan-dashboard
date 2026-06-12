@@ -845,6 +845,47 @@ var AUTH_USER = null;            // 当前用户名
 var AUTH_ROLE = null;            // 'admin' | 'region_manager' | 'group_leader' | 'staff'
 var AUTH_PERMISSIONS = null;     // { tabs:[], label:'', filter:bool, kpi:bool }
 var AUTH_DATA_CONSTRAINT = null; // { region: '郑州'|null, group: 'CD-F1'|null }
+var AUTH_MODE = null;            // 'server' | 'local'
+
+// ============================================================
+// 本地密码表（GitHub Pages 离线模式用）
+// ============================================================
+var LOCAL_USERS = {
+  'admin_马阳棣':{pw:'MYD181',role:'admin',dc:{region:null,group:null},dn:'马阳棣(总负责人)'},
+  'admin_赵斐斐':{pw:'ZFF567',role:'admin',dc:{region:null,group:null},dn:'赵斐斐(总负责人)'},
+  'admin_刘桂欣':{pw:'LGX588',role:'admin',dc:{region:null,group:null},dn:'刘桂欣(总负责人)'},
+  'admin_王光剑':{pw:'WGJ235',role:'admin',dc:{region:null,group:null},dn:'王光剑(总负责人)'},
+  'admin_陈艳辉':{pw:'CYH213',role:'admin',dc:{region:null,group:null},dn:'陈艳辉(总负责人)'},
+  'admin_赵亚莹':{pw:'ZYY500',role:'admin',dc:{region:null,group:null},dn:'赵亚莹(总负责人)'},
+  'admin_顾义飞':{pw:'GYF730',role:'admin',dc:{region:null,group:null},dn:'顾义飞(总负责人)'},
+  'admin_周云':{pw:'ZY850',role:'admin',dc:{region:null,group:null},dn:'周云(总负责人)'},
+  'admin_毛雅雯':{pw:'MYW930',role:'admin',dc:{region:null,group:null},dn:'毛雅雯(总负责人)'},
+  'admin_魏静':{pw:'WJ834',role:'admin',dc:{region:null,group:null},dn:'魏静(总负责人)'},
+  'admin_丁蕊':{pw:'DR902',role:'admin',dc:{region:null,group:null},dn:'丁蕊(总负责人)'},
+  'admin_张静':{pw:'ZJ484',role:'admin',dc:{region:null,group:null},dn:'张静(总负责人)'},
+  'admin_徐小节':{pw:'XXJ997',role:'admin',dc:{region:null,group:null},dn:'徐小节(总负责人)'},
+  'region_缪呈荣':{pw:'MCR809',role:'region_manager',dc:{region:'成都二',group:null},dn:'缪呈荣(成都二负责人)'},
+  'region_殷欢':{pw:'YH778',role:'region_manager',dc:{region:'成都一',group:null},dn:'殷欢(成都一负责人)'},
+  'region_郭蓉':{pw:'GR304',role:'region_manager',dc:{region:'成都一',group:null},dn:'郭蓉(成都一负责人)'},
+  'region_杨治钢':{pw:'YZG751',role:'region_manager',dc:{region:'郑州',group:null},dn:'杨治钢(郑州负责人)'},
+  'region_王娜':{pw:'WN180',role:'region_manager',dc:{region:'郑州',group:null},dn:'王娜(郑州负责人)'},
+  'region_王云淋':{pw:'WYL602',role:'region_manager',dc:{region:'成都一',group:null},dn:'王云淋(成都一负责人)'},
+  'group_周康飞':{pw:'ZKF840',role:'group_leader',dc:{region:'郑州',group:'ZZ-F5'},dn:'周康飞(ZZ-F5组长)'},
+  'group_吕姝璇':{pw:'LSX897',role:'group_leader',dc:{region:'郑州',group:'ZZ-F1'},dn:'吕姝璇(ZZ-F1组长)'},
+  'group_胥涛':{pw:'XT400',role:'group_leader',dc:{region:'成都一',group:'CD-F2'},dn:'胥涛(CD-F2组长)'},
+  'group_梁亚文':{pw:'LYW342',role:'group_leader',dc:{region:'郑州',group:'ZZ-F2'},dn:'梁亚文(ZZ-F2组长)'},
+  'group_舒柏策':{pw:'SBC943',role:'region_manager',dc:{region:'成都二',group:null},dn:'舒柏策(成都二负责人)'},
+  'group_唐成达':{pw:'TCD567',role:'group_leader',dc:{region:'成都一',group:'CD-F1'},dn:'唐成达(CD-F1组长)'},
+  'group_徐杰':{pw:'XJ458',role:'group_leader',dc:{region:'郑州',group:'ZZ-F3'},dn:'徐杰(ZZ-F3组长)'},
+  'group_赵卓阳':{pw:'ZZY601',role:'group_leader',dc:{region:'郑州',group:'ZZ-F4'},dn:'赵卓阳(ZZ-F4组长)'}
+};
+
+var ROLE_PERMS = {
+  'admin':{tabs:['overview','ranking','today','group','detail','company-rank','region-rank','group-rank','first-collection','staff-productivity','company-productivity'],label:'👑 总负责人',filter:true,kpi:true},
+  'region_manager':{tabs:['overview','ranking','today','group','detail','company-rank','region-rank','group-rank','first-collection','staff-productivity','company-productivity'],label:'🏙️ 地区负责人',filter:true,kpi:true},
+  'group_leader':{tabs:['overview','ranking','today','group','detail','group-rank','staff-productivity'],label:'⭐ 组长',filter:true,kpi:true},
+  'staff':{tabs:['overview','today','detail'],label:'👤 员工',filter:false,kpi:false}
+};
 
 // ============================================================
 // 初始化：检查是否已登录
@@ -854,24 +895,42 @@ function initAuth() {
   xhr.open('GET', '/api/user', true);
   xhr.onload = function() {
     if (xhr.status === 200) {
-      var data = JSON.parse(xhr.responseText);
-      if (data.logged_in) {
-        AUTH_USER = data.username;
-        AUTH_ROLE = data.role;
-        AUTH_PERMISSIONS = data.permissions;
-        AUTH_DATA_CONSTRAINT = data.data_constraint || { region: null, group: null };
-        applyPermission();
-        return;
-      }
+      try {
+        var data = JSON.parse(xhr.responseText);
+        if (data.logged_in) {
+          AUTH_MODE = 'server';
+          AUTH_USER = data.username;
+          AUTH_ROLE = data.role;
+          AUTH_PERMISSIONS = data.permissions;
+          AUTH_DATA_CONSTRAINT = data.data_constraint || { region: null, group: null };
+          applyPermission();
+          return;
+        }
+      } catch(e) {}
     }
-    // 未登录 — 显示登录遮罩
+    // 服务器模式未登录 — 显示登录遮罩
+    AUTH_MODE = (xhr.status === 200 || xhr.status === 401) ? 'server' : 'local';
     showLogin();
   };
   xhr.onerror = function() {
-    // 后端不可达 — 也显示登录遮罩，但给提示
+    // 后端不可达 → 本地模式
+    AUTH_MODE = 'local';
+    // 检查本地 sessionStorage
+    var saved = sessionStorage.getItem('dashboardAuth');
+    if (saved) {
+      try {
+        var auth = JSON.parse(saved);
+        if (auth.user && auth.expires && Date.now() < auth.expires) {
+          AUTH_USER = auth.user;
+          AUTH_ROLE = auth.role;
+          AUTH_DATA_CONSTRAINT = auth.dc;
+          AUTH_PERMISSIONS = ROLE_PERMS[AUTH_ROLE];
+          applyPermission();
+          return;
+        }
+      } catch(e) {}
+    }
     showLogin();
-    var err = document.getElementById('loginError');
-    if (err) err.textContent = '无法连接服务器，请确认服务已启动';
   };
   xhr.send();
 }
@@ -1069,12 +1128,37 @@ function doLogin() {
   if (!username) { errEl.textContent = '请输入账号'; userInput.focus(); return; }
   if (!password) { errEl.textContent = '请输入密码'; pwdInput.focus(); return; }
 
-  // 禁用按钮防重复提交
   var btn = document.getElementById('loginBtn');
   btn.disabled = true;
   btn.textContent = '登录中...';
   errEl.textContent = '';
 
+  // ---- 本地模式：查本地密码表 ----
+  if (AUTH_MODE === 'local') {
+    var u = LOCAL_USERS[username];
+    if (u && u.pw === password) {
+      AUTH_USER = username;
+      AUTH_ROLE = u.role;
+      AUTH_DATA_CONSTRAINT = u.dc;
+      AUTH_PERMISSIONS = ROLE_PERMS[u.role];
+      // 存 sessionStorage（24小时有效）
+      sessionStorage.setItem('dashboardAuth', JSON.stringify({
+        user: username, role: u.role, dc: u.dc,
+        expires: Date.now() + 24*60*60*1000
+      }));
+      try { localStorage.setItem('dashboard_user', username); } catch(e) {}
+      window.location.reload();
+    } else {
+      btn.disabled = false;
+      btn.textContent = '登 录';
+      errEl.textContent = '账号或密码错误';
+      pwdInput.value = '';
+      pwdInput.focus();
+    }
+    return;
+  }
+
+  // ---- 服务器模式：调 API ----
   var xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/login', true);
   xhr.setRequestHeader('Content-Type', 'application/json');
@@ -1084,7 +1168,6 @@ function doLogin() {
     if (xhr.status === 200) {
       var data = JSON.parse(xhr.responseText);
       if (data.success) {
-        // 记住账号，然后刷新页面让同步预检接管数据过滤
         try { localStorage.setItem('dashboard_user', username); } catch(e) {}
         window.location.reload();
       }
@@ -1100,9 +1183,11 @@ function doLogin() {
     }
   };
   xhr.onerror = function() {
+    // 服务器不可达，切到本地模式重试
+    AUTH_MODE = 'local';
     btn.disabled = false;
     btn.textContent = '登 录';
-    errEl.textContent = '无法连接服务器';
+    doLogin();
   };
   xhr.send(JSON.stringify({ username: username, password: password }));
 }
@@ -1111,20 +1196,22 @@ function doLogin() {
 // 退出登录
 // ============================================================
 function doLogout() {
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', '/api/logout', true);
-  xhr.onload = function() {
-    AUTH_USER = null;
-    AUTH_ROLE = null;
-    AUTH_PERMISSIONS = null;
-    AUTH_DATA_CONSTRAINT = null;
-    window.location.reload();
-  };
-  xhr.onerror = function() {
-    // 即使后端不可达，也刷新
-    window.location.reload();
-  };
-  xhr.send();
+  // 清除本地存储
+  sessionStorage.removeItem('dashboardAuth');
+  AUTH_USER = null;
+  AUTH_ROLE = null;
+  AUTH_PERMISSIONS = null;
+  AUTH_DATA_CONSTRAINT = null;
+  AUTH_MODE = null;
+  // 尝试通知服务器
+  if (typeof XMLHttpRequest !== 'undefined') {
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/logout', true);
+      xhr.send();
+    } catch(e) {}
+  }
+  window.location.reload();
 }
 
 // ============================================================
@@ -1514,27 +1601,64 @@ function updateTimeDisplay() {
 
 // ============================================================
 // 🔒 鉴权预检：在一切初始化之前同步检查登录状态
-//    已登录 → 立即锁定 FILTERS，后续渲染直接用受限数据
+//    已登录 → 立即锁定所有筛选器，后续渲染直接用受限数据
 //    未登录 → 显示登录框，照常初始化（登录后会 reload 页面）
+//    双模式：先试服务器，不行就用本地 sessionStorage
 // ============================================================
 (function() {
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', '/api/user', false);  // 同步请求（内网 localhost，延迟 <5ms）
-  try { xhr.send(); } catch(e) { return; }
-  if (xhr.status === 200) {
-    try {
+  var authed = false;
+  // 方式一：同步请求服务器
+  try {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/user', false);
+    xhr.send();
+    if (xhr.status === 200) {
       var d = JSON.parse(xhr.responseText);
       if (d.logged_in) {
+        AUTH_MODE = 'server';
         AUTH_USER = d.username;
         AUTH_ROLE = d.role;
         AUTH_PERMISSIONS = d.permissions;
         AUTH_DATA_CONSTRAINT = d.data_constraint || { region: null, group: null };
-        // 在数据加载前就锁死 FILTERS
-        var dc = AUTH_DATA_CONSTRAINT;
-        if (dc.region) FILTERS.region = dc.region;
-        if (dc.group)  FILTERS.group  = dc.group;
+        authed = true;
+      }
+    }
+  } catch(e) {}
+
+  // 方式二：本地 sessionStorage
+  if (!authed) {
+    AUTH_MODE = 'local';
+    try {
+      var saved = JSON.parse(sessionStorage.getItem('dashboardAuth') || '{}');
+      if (saved.user && saved.expires && Date.now() < saved.expires) {
+        AUTH_USER = saved.user;
+        AUTH_ROLE = saved.role;
+        AUTH_DATA_CONSTRAINT = saved.dc || { region: null, group: null };
+        AUTH_PERMISSIONS = ROLE_PERMS[saved.role];
+        authed = true;
       }
     } catch(e) {}
+  }
+
+  if (authed) {
+    var dc = AUTH_DATA_CONSTRAINT;
+    // 在数据加载前就锁死主 FILTERS
+    if (dc.region) FILTERS.region = dc.region;
+    if (dc.group)  FILTERS.group  = dc.group;
+
+    // 同时锁定所有子页签筛选器
+    if (dc.region) {
+      ['bdRegionFilter', 'staffFilterRegion', 'groupSegRegionFilter'].forEach(function(id) {
+        var sel = document.getElementById(id);
+        if (sel) { sel.value = dc.region; sel.style.display = 'none'; }
+      });
+    }
+    if (dc.group) {
+      ['bdGroupFilter', 'staffFilterGroup'].forEach(function(id) {
+        var sel = document.getElementById(id);
+        if (sel) { sel.value = dc.group; sel.style.display = 'none'; }
+      });
+    }
   }
 })();
 
@@ -2921,8 +3045,10 @@ function renderSegmentTable(wrapId, collectors) {
 }
 
 function getSegmentFilteredDetail() {
-  var region = document.getElementById('groupSegRegionFilter').value;
-  var group = document.getElementById('groupSegGroupFilter').value;
+  // 数据约束优先于下拉框值
+  var dc = AUTH_DATA_CONSTRAINT || {};
+  var region = dc.region || document.getElementById('groupSegRegionFilter').value;
+  var group  = dc.group  || document.getElementById('groupSegGroupFilter').value;
   // 使用原始数据，不受全局筛选器影响
   var src = (window.__ORIG_DATA && window.__ORIG_DATA.TODAY_DETAIL) ? window.__ORIG_DATA.TODAY_DETAIL : TODAY_DETAIL;
   var filtered = src;
@@ -2956,7 +3082,8 @@ var REGION_GROUPS = {
 };
 
 function onGroupSegRegionChange() {
-  var region = document.getElementById('groupSegRegionFilter').value;
+  var dc = AUTH_DATA_CONSTRAINT || {};
+  var region = dc.region || document.getElementById('groupSegRegionFilter').value;
   var groupSel = document.getElementById('groupSegGroupFilter');
   groupSel.innerHTML = '<option value="全部">全部小组</option>';
   if (region === '全部') {
@@ -2973,8 +3100,9 @@ function onGroupSegRegionChange() {
 }
 
 function renderGroupSegmentTable() {
-  var region = document.getElementById('groupSegRegionFilter').value;
-  var group = document.getElementById('groupSegGroupFilter').value;
+  var dc = AUTH_DATA_CONSTRAINT || {};
+  var region = dc.region || document.getElementById('groupSegRegionFilter').value;
+  var group  = dc.group  || document.getElementById('groupSegGroupFilter').value;
 
   // 使用原始数据，不受全局筛选器影响
   var src = (window.__ORIG_DATA && window.__ORIG_DATA.TODAY_DETAIL) ? window.__ORIG_DATA.TODAY_DETAIL : TODAY_DETAIL;
@@ -3173,9 +3301,10 @@ function renderBreakdownTable() {
   // 使用原始数据源
   var src = (window.__ORIG_DATA && window.__ORIG_DATA.TODAY_BREAKDOWN_ALL) ? window.__ORIG_DATA.TODAY_BREAKDOWN_ALL : TODAY_BREAKDOWN_ALL;
 
-  // 筛选器
-  var bdRegion = document.getElementById('bdRegionFilter').value;
-  var bdGroup = document.getElementById('bdGroupFilter').value;
+  // 筛选器（数据约束优先于下拉框值）
+  var dc = AUTH_DATA_CONSTRAINT || {};
+  var bdRegion = dc.region || document.getElementById('bdRegionFilter').value;
+  var bdGroup  = dc.group  || document.getElementById('bdGroupFilter').value;
   var bdCat = document.getElementById('bdCatFilter').value;
   var nameFilter = (document.getElementById('breakdownNameFilter').value || '').trim().toLowerCase();
 

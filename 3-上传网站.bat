@@ -1,64 +1,40 @@
-﻿@echo off
+@echo off
 chcp 65001 >nul
-title 看板 - 上传网站
-echo.
-echo ============================================
-echo   贷后数据看板 - 发布到网站
-echo ============================================
-echo.
-
 cd /d "%~dp0"
 
+echo ============================================
+echo   上传看板到 GitHub Pages
+echo ============================================
+
+:: 检查 git 仓库
+if not exist "%~dp0.git" (
+    echo [错误] 未找到 .git 目录
+    echo 请先运行: git init ^&^& git remote add origin 你的仓库地址
+    pause
+    exit /b 1
+)
+
+:: 检查 index.html
 if not exist "%~dp0index.html" (
-    echo [WARN] 未找到 index.html, 请先运行 2-生成看板.bat
+    echo [错误] 未找到 index.html
     pause
     exit /b 1
 )
 
-git --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [FAIL] 未找到 Git!
-    echo 请安装 Git: https://git-scm.com/download/win
-    start https://git-scm.com/download/win
-    pause
-    exit /b 1
-)
+:: 同步 dashboard_v2.html 到 index.html
+echo [1/3] 同步 index.html...
+copy /Y "%~dp0dashboard_v2.html" "%~dp0index.html" >nul
+echo [OK] index.html 已同步
 
-git remote -v 2>nul | findstr "loan-dashboard" >nul
-if %errorlevel% neq 0 (
-    echo [INFO] 正在关联 GitHub 仓库...
-    if not exist "%~dp0.git" (
-        git init
-        git checkout -b master
-    )
-    git remote add origin https://github.com/XY-liu87/loan-dashboard.git 2>nul
-    if %errorlevel% neq 0 (
-        git remote set-url origin https://github.com/XY-liu87/loan-dashboard.git
-    )
-    echo [OK] 已关联远程仓库
-)
+:: 提交并推送
+echo [2/3] 提交到 git...
+git add index.html dashboard_v2.html data_v2_enc.js name_map.json .gitignore 3-上传网站.bat
+git commit -m "更新看板 %date% %time%" 2>nul
 
-echo [1/3] 检查变更...
-git status --short
+echo [3/3] 推送到 GitHub...
+git push origin main
 
-echo [2/3] 提交更新...
-git add index.html dashboard_v2.html data_v2.js data_v2_enc.js 看板结果
-git commit -m "更新看板数据"
-if %errorlevel% equ 0 (
-    echo [OK] 新变更已提交
-) else (
-    echo [INFO] 没有新变更需要提交, 直接推送已有提交...
-)
-
-echo [3/3] 上传到 GitHub...
-git push -u origin master
-if %errorlevel% equ 0 (
-    echo ============================================
-    echo   [OK] 发布成功!
-    echo   https://xy-liu87.github.io/loan-dashboard/
-    echo ============================================
-) else (
-    echo [FAIL] 上传失败,请检查网络或 GitHub 权限
-)
 echo.
+echo [完成] 等待 1-2 分钟后访问:
+echo https://xy-liu87.github.io/loan-dashboard/
 pause

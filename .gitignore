@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+audit.log
+看板数据/*.xlsx
