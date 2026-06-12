@@ -1519,7 +1519,9 @@ function initFilterUI() {
       groupSelect.value = currentVal;
     }
   };
-  window._populateGroupOptions('全部');
+  // 根据数据约束决定初始小组列表（受限用户只看自己地区的小组）
+  var initRegion = (AUTH_DATA_CONSTRAINT && AUTH_DATA_CONSTRAINT.region) ? AUTH_DATA_CONSTRAINT.region : '全部';
+  window._populateGroupOptions(initRegion);
 
   // Update filter info text
   window.updateFilterInfo = function() {
