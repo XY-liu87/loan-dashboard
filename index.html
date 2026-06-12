@@ -893,48 +893,12 @@ var ROLE_PERMS = {
 // 初始化：检查是否已登录
 // ============================================================
 function initAuth() {
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', '/api/user', true);
-  xhr.onload = function() {
-    if (xhr.status === 200) {
-      try {
-        var data = JSON.parse(xhr.responseText);
-        if (data.logged_in) {
-          AUTH_MODE = 'server';
-          AUTH_USER = data.username;
-          AUTH_ROLE = data.role;
-          AUTH_PERMISSIONS = data.permissions;
-          AUTH_DATA_CONSTRAINT = data.data_constraint || { region: null, group: null };
-          applyPermission();
-          return;
-        }
-      } catch(e) {}
-    }
-    // 服务器模式未登录 — 显示登录遮罩
-    AUTH_MODE = (xhr.status === 200 || xhr.status === 401) ? 'server' : 'local';
-    showLogin();
-  };
-  xhr.onerror = function() {
-    // 后端不可达 → 本地模式
-    AUTH_MODE = 'local';
-    // 检查本地 localStorage
-    var saved = localStorage.getItem('dashboardAuth');
-    if (saved) {
-      try {
-        var auth = JSON.parse(saved);
-        if (auth.user && auth.expires && Date.now() < auth.expires) {
-          AUTH_USER = auth.user;
-          AUTH_ROLE = auth.role;
-          AUTH_DATA_CONSTRAINT = auth.dc;
-          AUTH_PERMISSIONS = ROLE_PERMS[AUTH_ROLE];
-          applyPermission();
-          return;
-        }
-      } catch(e) {}
-    }
-    showLogin();
-  };
-  xhr.send();
+  // 检查是否已有登录态
+  if (AUTH_USER && AUTH_ROLE && AUTH_PERMISSIONS) {
+    applyPermission();
+    return;
+  }
+  showLogin();
 }
 
 // ============================================================
@@ -1124,7 +1088,7 @@ function doLogin() {
   var userInput = document.getElementById('loginUser');
   var pwdInput = document.getElementById('loginPwd');
   var errEl = document.getElementById('loginError');
-  if (!userInput || !pwdInput) { alert('Page error: login fields missing'); return; }
+  if (!userInput || !pwdInput) { return; }
   var username = userInput.value.trim();
   var password = pwdInput.value.trim();
 
@@ -1136,85 +1100,28 @@ function doLogin() {
   btn.textContent = '登录中...';
   errEl.textContent = '';
 
-  // 模式未确定时，默认用本地模式（GitHub Pages 上更可靠）
-  if (!AUTH_MODE) AUTH_MODE = 'local';
-
-  // ---- 本地模式：查本地密码表 ----
-  if (AUTH_MODE === 'local') {
-    var u = LOCAL_USERS[username];
-    if (u && u.pw === password) {
-      // 存到 localStorage（比 sessionStorage 更可靠，跨标签页也有效）
-      var authData = {
-        user: username, role: u.role, dc: u.dc,
-        expires: Date.now() + 24*60*60*1000
-      };
-      localStorage.setItem('dashboardAuth', JSON.stringify(authData));
-      try { localStorage.setItem('dashboard_user', username); } catch(e) {}
-      // 刷新页面，让同步预检锁定筛选器后再渲染数据
-      window.location.href = window.location.pathname;
-      return;
-    }
-    btn.disabled = false;
-    btn.textContent = '登 录';
-    errEl.textContent = '账号或密码错误';
-    pwdInput.value = '';
-    pwdInput.focus();
+  var u = LOCAL_USERS[username];
+  if (u && u.pw === password) {
+    localStorage.setItem('dashboardAuth', JSON.stringify({
+      user: username, role: u.role, dc: u.dc,
+      expires: Date.now() + 24*60*60*1000
+    }));
+    try { localStorage.setItem('dashboard_user', username); } catch(e) {}
+    window.location.reload();
     return;
   }
-
-  // ---- 服务器模式：调 API ----
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', '/api/login', true);
-  xhr.setRequestHeader('Content-Type', 'application/json');
-  xhr.onload = function() {
-    btn.disabled = false;
-    btn.textContent = '登 录';
-    if (xhr.status === 200) {
-      var data = JSON.parse(xhr.responseText);
-      if (data.success) {
-        try { localStorage.setItem('dashboard_user', username); } catch(e) {}
-        window.location.reload();
-      }
-    } else {
-      try {
-        var err = JSON.parse(xhr.responseText);
-        errEl.textContent = err.error || '登录失败';
-      } catch(e) {
-        errEl.textContent = '服务器错误';
-      }
-      pwdInput.value = '';
-      pwdInput.focus();
-    }
-  };
-  xhr.onerror = function() {
-    // 服务器不可达，切到本地模式重试
-    AUTH_MODE = 'local';
-    btn.disabled = false;
-    btn.textContent = '登 录';
-    doLogin();
-  };
-  xhr.send(JSON.stringify({ username: username, password: password }));
+  btn.disabled = false;
+  btn.textContent = '登 录';
+  errEl.textContent = '账号或密码错误';
+  pwdInput.value = '';
+  pwdInput.focus();
 }
 
 // ============================================================
 // 退出登录
 // ============================================================
 function doLogout() {
-  // 清除本地存储
   localStorage.removeItem('dashboardAuth');
-  AUTH_USER = null;
-  AUTH_ROLE = null;
-  AUTH_PERMISSIONS = null;
-  AUTH_DATA_CONSTRAINT = null;
-  AUTH_MODE = null;
-  // 尝试通知服务器
-  if (typeof XMLHttpRequest !== 'undefined') {
-    try {
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/logout', true);
-      xhr.send();
-    } catch(e) {}
-  }
   window.location.reload();
 }
 
@@ -1606,66 +1513,24 @@ function updateTimeDisplay() {
 
 
 // ============================================================
-// 🔒 鉴权预检：在一切初始化之前同步检查登录状态
-//    已登录 → 立即锁定所有筛选器，后续渲染直接用受限数据
-//    未登录 → 显示登录框，照常初始化（登录后会 reload 页面）
-//    双模式：先试服务器，不行就用本地 sessionStorage
+// 🔒 鉴权预检：仅在页面初始化前检查 localStorage
+//    已登录 → 锁死筛选器，数据渲染时直接用受限范围
+//    未登录 → 照常，稍后 initAuth 弹出登录框
 // ============================================================
 (function() {
-  var authed = false;
-  // 方式一：同步请求服务器
+  AUTH_MODE = 'local';
   try {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', '/api/user', false);
-    xhr.send();
-    if (xhr.status === 200) {
-      var d = JSON.parse(xhr.responseText);
-      if (d.logged_in) {
-        AUTH_MODE = 'server';
-        AUTH_USER = d.username;
-        AUTH_ROLE = d.role;
-        AUTH_PERMISSIONS = d.permissions;
-        AUTH_DATA_CONSTRAINT = d.data_constraint || { region: null, group: null };
-        authed = true;
-      }
+    var saved = JSON.parse(localStorage.getItem('dashboardAuth') || '{}');
+    if (saved.user && saved.expires && Date.now() < saved.expires) {
+      AUTH_USER = saved.user;
+      AUTH_ROLE = saved.role;
+      AUTH_DATA_CONSTRAINT = saved.dc || { region: null, group: null };
+      AUTH_PERMISSIONS = ROLE_PERMS[saved.role];
+      var dc = AUTH_DATA_CONSTRAINT;
+      if (dc.region) FILTERS.region = dc.region;
+      if (dc.group)  FILTERS.group  = dc.group;
     }
   } catch(e) {}
-
-  // 方式二：本地 localStorage（跨标签页持久化）
-  if (!authed) {
-    AUTH_MODE = 'local';
-    try {
-      var saved = JSON.parse(localStorage.getItem('dashboardAuth') || '{}');
-      if (saved.user && saved.expires && Date.now() < saved.expires) {
-        AUTH_USER = saved.user;
-        AUTH_ROLE = saved.role;
-        AUTH_DATA_CONSTRAINT = saved.dc || { region: null, group: null };
-        AUTH_PERMISSIONS = ROLE_PERMS[saved.role];
-        authed = true;
-      }
-    } catch(e) {}
-  }
-
-  if (authed) {
-    var dc = AUTH_DATA_CONSTRAINT;
-    // 在数据加载前就锁死主 FILTERS
-    if (dc.region) FILTERS.region = dc.region;
-    if (dc.group)  FILTERS.group  = dc.group;
-
-    // 同时锁定所有子页签筛选器
-    if (dc.region) {
-      ['bdRegionFilter', 'staffFilterRegion', 'groupSegRegionFilter'].forEach(function(id) {
-        var sel = document.getElementById(id);
-        if (sel) { sel.value = dc.region; sel.style.display = 'none'; }
-      });
-    }
-    if (dc.group) {
-      ['bdGroupFilter', 'staffFilterGroup'].forEach(function(id) {
-        var sel = document.getElementById(id);
-        if (sel) { sel.value = dc.group; sel.style.display = 'none'; }
-      });
-    }
-  }
 })();
 
 // ============================================================
