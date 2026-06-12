@@ -915,8 +915,8 @@ function initAuth() {
   xhr.onerror = function() {
     // 后端不可达 → 本地模式
     AUTH_MODE = 'local';
-    // 检查本地 sessionStorage
-    var saved = sessionStorage.getItem('dashboardAuth');
+    // 检查本地 localStorage
+    var saved = localStorage.getItem('dashboardAuth');
     if (saved) {
       try {
         var auth = JSON.parse(saved);
@@ -1140,21 +1140,17 @@ function doLogin() {
   if (AUTH_MODE === 'local') {
     var u = LOCAL_USERS[username];
     if (u && u.pw === password) {
-      AUTH_USER = username;
-      AUTH_ROLE = u.role;
-      AUTH_DATA_CONSTRAINT = u.dc;
-      AUTH_PERMISSIONS = ROLE_PERMS[u.role];
-      // 存 sessionStorage（24小时有效）
-      sessionStorage.setItem('dashboardAuth', JSON.stringify({
+      // 存到 localStorage（比 sessionStorage 更可靠，跨标签页也有效）
+      var authData = {
         user: username, role: u.role, dc: u.dc,
         expires: Date.now() + 24*60*60*1000
-      }));
+      };
+      localStorage.setItem('dashboardAuth', JSON.stringify(authData));
       try { localStorage.setItem('dashboard_user', username); } catch(e) {}
-      // 直接进入看板，不刷新页面
-      applyPermission();
+      // 刷新页面，让同步预检锁定筛选器后再渲染数据
+      window.location.href = window.location.pathname;
       return;
     }
-    // 登录失败 — 显示错误并重试
     btn.disabled = false;
     btn.textContent = '登 录';
     errEl.textContent = '账号或密码错误';
@@ -1202,7 +1198,7 @@ function doLogin() {
 // ============================================================
 function doLogout() {
   // 清除本地存储
-  sessionStorage.removeItem('dashboardAuth');
+  localStorage.removeItem('dashboardAuth');
   AUTH_USER = null;
   AUTH_ROLE = null;
   AUTH_PERMISSIONS = null;
@@ -1630,11 +1626,11 @@ function updateTimeDisplay() {
     }
   } catch(e) {}
 
-  // 方式二：本地 sessionStorage
+  // 方式二：本地 localStorage（跨标签页持久化）
   if (!authed) {
     AUTH_MODE = 'local';
     try {
-      var saved = JSON.parse(sessionStorage.getItem('dashboardAuth') || '{}');
+      var saved = JSON.parse(localStorage.getItem('dashboardAuth') || '{}');
       if (saved.user && saved.expires && Date.now() < saved.expires) {
         AUTH_USER = saved.user;
         AUTH_ROLE = saved.role;
