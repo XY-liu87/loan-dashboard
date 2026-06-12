@@ -1122,6 +1122,7 @@ function doLogin() {
   var userInput = document.getElementById('loginUser');
   var pwdInput = document.getElementById('loginPwd');
   var errEl = document.getElementById('loginError');
+  if (!userInput || !pwdInput) { alert('Page error: login fields missing'); return; }
   var username = userInput.value.trim();
   var password = pwdInput.value.trim();
 
