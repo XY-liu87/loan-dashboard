@@ -895,7 +895,7 @@ function hideLogin() {
 // 权限应用：板块显隐 + 数据约束（地区/小组锁定）
 // ============================================================
 function applyPermission() {
-  hideLogin();
+  // 注意：先做完所有过滤，最后再显示页面，避免闪现全部数据
 
   // 权限标识
   var badge = document.getElementById('permBadge');
@@ -966,7 +966,7 @@ function applyPermission() {
   // ============================================================
   // 🔒 数据级权限：锁定地区/小组筛选器
   // ============================================================
-  dc = AUTH_DATA_CONSTRAINT || {};
+  var dc = AUTH_DATA_CONSTRAINT || {};
   var regionSelect = document.getElementById('filterRegion');
   var groupSelect  = document.getElementById('filterGroup');
 
@@ -1051,6 +1051,9 @@ function applyPermission() {
     var tabContent = document.getElementById('tab-' + firstTab);
     if (tabContent) tabContent.classList.add('active');
   }
+
+  // 所有过滤完成后再显示页面，杜绝闪现
+  hideLogin();
 }
 
 // ============================================================
@@ -1081,13 +1084,9 @@ function doLogin() {
     if (xhr.status === 200) {
       var data = JSON.parse(xhr.responseText);
       if (data.success) {
-        AUTH_USER = data.username;
-        AUTH_ROLE = data.role;
-        AUTH_PERMISSIONS = data.permissions;
-        AUTH_DATA_CONSTRAINT = data.data_constraint || { region: null, group: null };
-        // 记住账号
+        // 记住账号，然后刷新页面让同步预检接管数据过滤
         try { localStorage.setItem('dashboard_user', username); } catch(e) {}
-        applyPermission();
+        window.location.reload();
       }
     } else {
       try {
@@ -1512,6 +1511,32 @@ function updateTimeDisplay() {
   }
 }
 
+
+// ============================================================
+// 🔒 鉴权预检：在一切初始化之前同步检查登录状态
+//    已登录 → 立即锁定 FILTERS，后续渲染直接用受限数据
+//    未登录 → 显示登录框，照常初始化（登录后会 reload 页面）
+// ============================================================
+(function() {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/api/user', false);  // 同步请求（内网 localhost，延迟 <5ms）
+  try { xhr.send(); } catch(e) { return; }
+  if (xhr.status === 200) {
+    try {
+      var d = JSON.parse(xhr.responseText);
+      if (d.logged_in) {
+        AUTH_USER = d.username;
+        AUTH_ROLE = d.role;
+        AUTH_PERMISSIONS = d.permissions;
+        AUTH_DATA_CONSTRAINT = d.data_constraint || { region: null, group: null };
+        // 在数据加载前就锁死 FILTERS
+        var dc = AUTH_DATA_CONSTRAINT;
+        if (dc.region) FILTERS.region = dc.region;
+        if (dc.group)  FILTERS.group  = dc.group;
+      }
+    } catch(e) {}
+  }
+})();
 
 // ============================================================
 // 页面初始化：保存数据、读取筛选、应用筛选
