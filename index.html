@@ -1150,14 +1150,16 @@ function doLogin() {
         expires: Date.now() + 24*60*60*1000
       }));
       try { localStorage.setItem('dashboard_user', username); } catch(e) {}
-      window.location.reload();
-    } else {
-      btn.disabled = false;
-      btn.textContent = '登 录';
-      errEl.textContent = '账号或密码错误';
-      pwdInput.value = '';
-      pwdInput.focus();
+      // 直接进入看板，不刷新页面
+      applyPermission();
+      return;
     }
+    // 登录失败 — 显示错误并重试
+    btn.disabled = false;
+    btn.textContent = '登 录';
+    errEl.textContent = '账号或密码错误';
+    pwdInput.value = '';
+    pwdInput.focus();
     return;
   }
 
