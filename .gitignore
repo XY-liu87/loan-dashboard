@@ -1,4 +1,9 @@
 __pycache__/
 *.pyc
 audit.log
-看板数据/*.xlsx
+users.json
+server.py
+requirements.txt
+calc_nr.py
+启动看板服务器.bat
+看板数据/
