@@ -327,10 +327,11 @@ body {
 <!-- 登录验证遮罩 -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
-    <h2>🔐 数据看板</h2>
-    <p class="login-sub">请输入访问密码</p>
-    <input type="password" id="loginPwd" placeholder="请输入密码" autofocus>
-    <button class="login-btn" id="loginBtn">验 证</button>
+    <h2>🔐 贷后数据看板</h2>
+    <p class="login-sub">请输入您的账号和密码</p>
+    <input type="text" id="loginUser" placeholder="账号" autofocus>
+    <input type="password" id="loginPwd" placeholder="密码">
+    <button class="login-btn" id="loginBtn">登 录</button>
     <p class="login-error" id="loginError"></p>
   </div>
 </div>
@@ -838,153 +839,328 @@ window.onerror = function(msg, url, line, col, err) {
 updateTimeDisplay();
 
 // ============================================================
-// 登录验证 & 权限控制
+// 登录验证 & 权限控制 (v3 — 后端鉴权)
 // ============================================================
-var AUTH_PASSWORDS = { 'Xy2026': 'full', 'wzb': 'limited' };
-var AUTH_LEVEL = null;  // 'full' | 'limited'
+var AUTH_USER = null;            // 当前用户名
+var AUTH_ROLE = null;            // 'admin' | 'region_manager' | 'group_leader' | 'staff'
+var AUTH_PERMISSIONS = null;     // { tabs:[], label:'', filter:bool, kpi:bool }
+var AUTH_DATA_CONSTRAINT = null; // { region: '郑州'|null, group: 'CD-F1'|null }
 
-// 密码2 (wzb) 只能看"今日明细"；密码1 (xyzb) 全部可见
-var LIMITED_TABS = ['today'];
-
-// 需要隐藏的侧栏按钮和分组标题
-var ALL_SIDEBAR_ITEMS = [];       // 运行时填充
-var ALL_SECTION_TITLES = [];      // 运行时填充
-
-function checkAuth() {
-  try {
-    var saved = sessionStorage.getItem('dashboardAuth');
-    if (saved) {
-      var auth = JSON.parse(saved);
-      if (auth.level && auth.expires && Date.now() < auth.expires) {
-        AUTH_LEVEL = auth.level;
-      } else {
-        sessionStorage.removeItem('dashboardAuth');
+// ============================================================
+// 初始化：检查是否已登录
+// ============================================================
+function initAuth() {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/api/user', true);
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      var data = JSON.parse(xhr.responseText);
+      if (data.logged_in) {
+        AUTH_USER = data.username;
+        AUTH_ROLE = data.role;
+        AUTH_PERMISSIONS = data.permissions;
+        AUTH_DATA_CONSTRAINT = data.data_constraint || { region: null, group: null };
+        applyPermission();
+        return;
       }
     }
-  } catch(e) {}
-  return AUTH_LEVEL;
+    // 未登录 — 显示登录遮罩
+    showLogin();
+  };
+  xhr.onerror = function() {
+    // 后端不可达 — 也显示登录遮罩，但给提示
+    showLogin();
+    var err = document.getElementById('loginError');
+    if (err) err.textContent = '无法连接服务器，请确认服务已启动';
+  };
+  xhr.send();
 }
 
-function saveAuth(level) {
-  AUTH_LEVEL = level;
-  try {
-    sessionStorage.setItem('dashboardAuth', JSON.stringify({
-      level: level,
-      expires: Date.now() + 24 * 60 * 60 * 1000  // 24小时有效
-    }));
-  } catch(e) {}
+// ============================================================
+// 显示/隐藏登录遮罩
+// ============================================================
+function showLogin() {
+  var overlay = document.getElementById('loginOverlay');
+  if (overlay) overlay.style.display = '';
 }
 
-function applyPermission() {
-  var level = AUTH_LEVEL;
-  // 显示主界面
-  var appLayout = document.getElementById('appLayout');
-  if (appLayout) appLayout.style.visibility = 'visible';
-
-  // 隐藏登录遮罩
+function hideLogin() {
   var overlay = document.getElementById('loginOverlay');
   if (overlay) overlay.style.display = 'none';
+  var appLayout = document.getElementById('appLayout');
+  if (appLayout) appLayout.style.visibility = 'visible';
+}
+
+// ============================================================
+// 权限应用：板块显隐 + 数据约束（地区/小组锁定）
+// ============================================================
+function applyPermission() {
+  hideLogin();
 
   // 权限标识
   var badge = document.getElementById('permBadge');
-  if (badge) {
-    badge.textContent = level === 'full' ? '👑 管理权限' : '🔒 受限访问';
-    badge.style.color = level === 'full' ? 'var(--accent-cyan)' : '#d97706';
+  if (badge && AUTH_PERMISSIONS) {
+    var label = AUTH_PERMISSIONS.label + ' | ' + (AUTH_USER || '');
+    var dc = AUTH_DATA_CONSTRAINT;
+    if (dc && dc.region) label += ' [' + dc.region;
+    if (dc && dc.group) label += ' · ' + dc.group;
+    if (dc && dc.region) label += ']';
+    badge.textContent = label;
   }
 
-  if (level === 'full') return;  // 全部权限，无需限制
+  var allowedTabs = AUTH_PERMISSIONS ? (AUTH_PERMISSIONS.tabs || []) : [];
 
-  // ---- 受限模式：仅显示"今日明细" ----
-  // 收集所有需要处理的元素
-  var allSectionTitles = document.querySelectorAll('.sidebar-section-title');
+  // ---- 处理侧栏按钮 ----
   var allSidebarItems = document.querySelectorAll('.sidebar-item');
+  var firstVisible = null;
 
-  // 隐藏所有侧栏分组标题
-  allSectionTitles.forEach(function(el) {
-    el.style.display = 'none';
-  });
-
-  // 隐藏/显示侧栏按钮
   allSidebarItems.forEach(function(btn) {
     var tab = btn.getAttribute('data-tab');
-    if (LIMITED_TABS.indexOf(tab) >= 0) {
+    if (tab && allowedTabs.indexOf(tab) >= 0) {
       btn.style.display = '';
-      btn.classList.add('active');
-    } else {
+      if (!firstVisible) firstVisible = btn;
+    } else if (tab) {
       btn.style.display = 'none';
       btn.classList.remove('active');
     }
   });
 
-  // 隐藏所有侧栏子分组
-  var subGroups = document.querySelectorAll('.sidebar-sub-group, .sidebar-sub-sub-group');
-  subGroups.forEach(function(el) { el.style.display = 'none'; });
-
-  // 隐藏筛选栏
-  var filterBar = document.getElementById('filterBar');
-  if (filterBar) filterBar.style.display = 'none';
-
-  // 仅显示"今日明细"tab内容
-  document.querySelectorAll('.tab-content').forEach(function(tc) {
-    tc.classList.remove('active');
+  // ---- 处理分组标题 ----
+  var sectionGroups = [
+    { title: 'vendorSectionTitle',    sub: 'vendorSubGroup' },
+    { title: 'productivitySectionTitle', sub: 'productivitySubGroup' },
+  ];
+  sectionGroups.forEach(function(g) {
+    var titleEl = document.getElementById(g.title);
+    var subEl = document.getElementById(g.sub);
+    if (!titleEl || !subEl) return;
+    var hasVisible = false;
+    subEl.querySelectorAll('.sidebar-item').forEach(function(item) {
+      if (item.style.display !== 'none') hasVisible = true;
+    });
+    titleEl.style.display = hasVisible ? '' : 'none';
   });
-  var todayTab = document.getElementById('tab-today');
-  if (todayTab) todayTab.classList.add('active');
 
-  // 移除所有 KPI 卡片（受限模式不需要）
+  // 折叠所有子分组
+  var allSubGroups = document.querySelectorAll('.sidebar-sub-group, .sidebar-sub-sub-group');
+  allSubGroups.forEach(function(el) {
+    if (!el.classList.contains('collapsed')) el.classList.add('collapsed');
+  });
+  var allTitles = document.querySelectorAll('.sidebar-section-title');
+  allTitles.forEach(function(el) {
+    if (!el.classList.contains('collapsed')) el.classList.add('collapsed');
+  });
+
+  // ---- 筛选栏可见性 ----
+  var filterBar = document.getElementById('filterBar');
+  if (filterBar) {
+    filterBar.style.display = AUTH_PERMISSIONS && AUTH_PERMISSIONS.filter !== false ? '' : 'none';
+  }
+
+  // ---- KPI 卡片 ----
   var kpiRow = document.getElementById('kpiRow');
-  if (kpiRow) kpiRow.style.display = 'none';
+  if (kpiRow) {
+    kpiRow.style.display = AUTH_PERMISSIONS && AUTH_PERMISSIONS.kpi !== false ? '' : 'none';
+  }
+
+  // ============================================================
+  // 🔒 数据级权限：锁定地区/小组筛选器
+  // ============================================================
+  dc = AUTH_DATA_CONSTRAINT || {};
+  var regionSelect = document.getElementById('filterRegion');
+  var groupSelect  = document.getElementById('filterGroup');
+
+  if (dc.region) {
+    // 锁定地区：设置值并隐藏下拉
+    FILTERS.region = dc.region;
+    if (regionSelect) {
+      regionSelect.value = dc.region;
+      regionSelect.style.display = 'none';
+      var regionLabel = regionSelect.previousElementSibling;
+      if (regionLabel && regionLabel.tagName === 'LABEL') regionLabel.style.display = 'none';
+    }
+  } else {
+    FILTERS.region = '全部';
+    if (regionSelect) regionSelect.style.display = '';
+  }
+
+  if (dc.group) {
+    // 锁定小组：设置值并隐藏下拉
+    FILTERS.group = dc.group;
+    if (groupSelect) {
+      groupSelect.value = dc.group;
+      groupSelect.style.display = 'none';
+      var groupLabel = groupSelect.previousElementSibling;
+      if (groupLabel && groupLabel.tagName === 'LABEL') groupLabel.style.display = 'none';
+    }
+  } else {
+    FILTERS.group = '全部';
+    if (groupSelect) groupSelect.style.display = '';
+  }
+
+  // 如果同时锁定了地区和小组，隐藏整个筛选栏
+  if (dc.region && dc.group && filterBar) {
+    filterBar.style.display = 'none';
+  }
+
+  // 如果锁定了地区，更新小组选项（只显示该地区的小组）
+  if (dc.region && !dc.group && typeof window._populateGroupOptions === 'function') {
+    window._populateGroupOptions(dc.region);
+    if (groupSelect) groupSelect.value = '全部';
+  }
+
+  // 触发数据重新计算
+  if (typeof applyFiltersAndRecompute === 'function') {
+    applyFiltersAndRecompute();
+  }
+  if (typeof window.updateFilterInfo === 'function') {
+    window.updateFilterInfo();
+  }
+
+  // ---- 锁定子页签内的筛选器 ----
+  if (dc.region) {
+    ['bdRegionFilter', 'staffFilterRegion', 'groupSegRegionFilter'].forEach(function(id) {
+      var sel = document.getElementById(id);
+      if (sel) {
+        sel.value = dc.region;
+        sel.style.display = 'none';
+        var prev = sel.previousElementSibling;
+        if (prev && prev.tagName === 'LABEL') prev.style.display = 'none';
+      }
+    });
+  }
+  if (dc.group) {
+    ['staffFilterGroup'].forEach(function(id) {
+      var sel = document.getElementById(id);
+      if (sel) {
+        sel.value = dc.group;
+        sel.style.display = 'none';
+        var prev = sel.previousElementSibling;
+        if (prev && prev.tagName === 'LABEL') prev.style.display = 'none';
+      }
+    });
+  }
+
+  // ---- 激活第一个可见 tab ----
+  if (firstVisible) {
+    firstVisible.classList.add('active');
+    var firstTab = firstVisible.getAttribute('data-tab');
+    document.querySelectorAll('.tab-content').forEach(function(tc) {
+      tc.classList.remove('active');
+    });
+    var tabContent = document.getElementById('tab-' + firstTab);
+    if (tabContent) tabContent.classList.add('active');
+  }
 }
 
+// ============================================================
+// 登录
+// ============================================================
 function doLogin() {
+  var userInput = document.getElementById('loginUser');
   var pwdInput = document.getElementById('loginPwd');
   var errEl = document.getElementById('loginError');
-  var pwd = pwdInput.value.trim();
+  var username = userInput.value.trim();
+  var password = pwdInput.value.trim();
 
-  if (!pwd) {
-    errEl.textContent = '请输入密码';
-    return;
-  }
+  if (!username) { errEl.textContent = '请输入账号'; userInput.focus(); return; }
+  if (!password) { errEl.textContent = '请输入密码'; pwdInput.focus(); return; }
 
-  var level = AUTH_PASSWORDS[pwd];
-  if (!level) {
-    errEl.textContent = '密码错误，请重试';
-    pwdInput.value = '';
-    pwdInput.focus();
-    return;
-  }
+  // 禁用按钮防重复提交
+  var btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  btn.textContent = '登录中...';
+  errEl.textContent = '';
 
-  saveAuth(level);
-  applyPermission();
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/login', true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onload = function() {
+    btn.disabled = false;
+    btn.textContent = '登 录';
+    if (xhr.status === 200) {
+      var data = JSON.parse(xhr.responseText);
+      if (data.success) {
+        AUTH_USER = data.username;
+        AUTH_ROLE = data.role;
+        AUTH_PERMISSIONS = data.permissions;
+        AUTH_DATA_CONSTRAINT = data.data_constraint || { region: null, group: null };
+        // 记住账号
+        try { localStorage.setItem('dashboard_user', username); } catch(e) {}
+        applyPermission();
+      }
+    } else {
+      try {
+        var err = JSON.parse(xhr.responseText);
+        errEl.textContent = err.error || '登录失败';
+      } catch(e) {
+        errEl.textContent = '服务器错误';
+      }
+      pwdInput.value = '';
+      pwdInput.focus();
+    }
+  };
+  xhr.onerror = function() {
+    btn.disabled = false;
+    btn.textContent = '登 录';
+    errEl.textContent = '无法连接服务器';
+  };
+  xhr.send(JSON.stringify({ username: username, password: password }));
 }
 
+// ============================================================
+// 退出登录
+// ============================================================
 function doLogout() {
-  try { sessionStorage.removeItem('dashboardAuth'); } catch(e) {}
-  AUTH_LEVEL = null;
-  // 刷新页面回到登录状态
-  window.location.reload();
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/logout', true);
+  xhr.onload = function() {
+    AUTH_USER = null;
+    AUTH_ROLE = null;
+    AUTH_PERMISSIONS = null;
+    AUTH_DATA_CONSTRAINT = null;
+    window.location.reload();
+  };
+  xhr.onerror = function() {
+    // 即使后端不可达，也刷新
+    window.location.reload();
+  };
+  xhr.send();
 }
 
-// 绑定登录事件
+// ============================================================
+// 绑定事件
+// ============================================================
 document.getElementById('loginBtn').addEventListener('click', doLogin);
 document.getElementById('loginPwd').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') doLogin();
+
+});
+
+// 账号输入框回车跳到密码框
+document.getElementById('loginUser').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('loginPwd').focus();
 });
 
 // 绑定退出事件
 document.getElementById('logoutBtn').addEventListener('click', doLogout);
 
-// 启动时检查权限
-(function initAuth() {
-  if (checkAuth()) {
-    applyPermission();
-  } else {
-    // 显示登录界面
-    var overlay = document.getElementById('loginOverlay');
-    if (overlay) overlay.style.display = '';
-    var appLayout = document.getElementById('appLayout');
-    if (appLayout) appLayout.style.visibility = 'hidden';
+// 记住账号：页面加载时恢复上次登录的用户名
+(function() {
+  var savedUser = localStorage.getItem('dashboard_user');
+  if (savedUser) {
+    var userInput = document.getElementById('loginUser');
+    if (userInput) userInput.value = savedUser;
   }
+})();
+
+// 启动：先显示登录遮罩，再检查后端会话
+(function() {
+  var overlay = document.getElementById('loginOverlay');
+  if (overlay) overlay.style.display = '';
+  var appLayout = document.getElementById('appLayout');
+  if (appLayout) appLayout.style.visibility = 'hidden';
+  // initAuth() 将在 initFilterUI 之后调用，确保筛选器已就绪
 })();
 
 // Chart.js 加载检测
@@ -1294,11 +1470,11 @@ function initFilterUI() {
   });
 
   document.getElementById('clearFilters').addEventListener('click', function() {
-    FILTERS.region = '全部';
-    FILTERS.group = '全部';
-    regionSelect.value = '全部';
-    window._populateGroupOptions('全部');
-    groupSelect.value = '全部';
+    var dc = AUTH_DATA_CONSTRAINT || {};
+    if (!dc.region) { FILTERS.region = '全部'; regionSelect.value = '全部'; }
+    if (!dc.group)  { FILTERS.group  = '全部'; }
+    if (!dc.region) window._populateGroupOptions('全部');
+    if (!dc.group)  groupSelect.value = '全部';
     refreshDashboard();
   });
 }
@@ -1344,6 +1520,9 @@ function updateTimeDisplay() {
 saveOriginalData();
 // step 2
 initFilterUI();
+
+// 筛选器就绪后，检查登录状态（可能应用数据约束）
+initAuth();
 
 // step 3: name mapping
 // Convert initial name arrays to staff names (also truncate today top to 10)
