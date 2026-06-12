@@ -1,0 +1,272 @@
+{
+  "admin_马阳棣": {
+    "password": "190d4a17c43c686aaeff899bd01511166b630eda5a76feba3ad7314fbaca9101",
+    "role": "admin",
+    "display_name": "马阳棣(总负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": null,
+      "group": null
+    }
+  },
+  "admin_赵斐斐": {
+    "password": "858cbe8ba4bc06fe01a10f625a396dd7c21b2cc1d7bdd92cd775c9b83bc8084f",
+    "role": "admin",
+    "display_name": "赵斐斐(总负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": null,
+      "group": null
+    }
+  },
+  "admin_刘桂欣": {
+    "password": "096cfec99208c656f6c7951c1876fdf7863c2411ecb8dee8124ee8a4df8015db",
+    "role": "admin",
+    "display_name": "刘桂欣(总负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": null,
+      "group": null
+    }
+  },
+  "admin_王光剑": {
+    "password": "80b245eabb6aac4fa398d6655724b582293cb34acfce401c5145814d309f9e62",
+    "role": "admin",
+    "display_name": "王光剑(总负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": null,
+      "group": null
+    }
+  },
+  "admin_陈艳辉": {
+    "password": "83f7945cc92f9fa53f43d6ddccd79d6408a434851130ba6a3d17a7d0af5abf22",
+    "role": "admin",
+    "display_name": "陈艳辉(总负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": null,
+      "group": null
+    }
+  },
+  "admin_赵亚莹": {
+    "password": "e19536f16cfa771c43f847a73b63f70ef2099b078eaddde90abd00c5c6c446cb",
+    "role": "admin",
+    "display_name": "赵亚莹(总负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": null,
+      "group": null
+    }
+  },
+  "admin_顾义飞": {
+    "password": "eb762976fd4864f6f03f66c561a294925d89fe66e45e30f2e4c905c7fa9cffee",
+    "role": "admin",
+    "display_name": "顾义飞(总负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": null,
+      "group": null
+    }
+  },
+  "admin_周云": {
+    "password": "e3c113dd845eee46a6aabf725f8c5d12c7861747b79b83d812f8f71d186d9363",
+    "role": "admin",
+    "display_name": "周云(总负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": null,
+      "group": null
+    }
+  },
+  "admin_毛雅雯": {
+    "password": "d7ea51f650ab13ba9c022f4f09dd569f2844d319fe3ab1669cd7db89e26b2d53",
+    "role": "admin",
+    "display_name": "毛雅雯(总负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": null,
+      "group": null
+    }
+  },
+  "admin_魏静": {
+    "password": "ad9453919c861ca4256d6cce3ea3e0e46307e2ae0cf7f25cb21565f7019d36da",
+    "role": "admin",
+    "display_name": "魏静(总负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": null,
+      "group": null
+    }
+  },
+  "admin_丁蕊": {
+    "password": "91cbefc65dec12874820c02ba292301b050b854ed65faf00d10dda936ab61e8b",
+    "role": "admin",
+    "display_name": "丁蕊(总负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": null,
+      "group": null
+    }
+  },
+  "admin_张静": {
+    "password": "e6257d714efd3514f73191745438888064f588157bf73bccc16ef406f3cd162f",
+    "role": "admin",
+    "display_name": "张静(总负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": null,
+      "group": null
+    }
+  },
+  "admin_徐小节": {
+    "password": "39af8374118535de2e098333599940045601a027dc429806d6e5ac8ddc0fa870",
+    "role": "admin",
+    "display_name": "徐小节(总负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": null,
+      "group": null
+    }
+  },
+  "region_缪呈荣": {
+    "password": "9b43406570e243a51a9ff5320cb041f8a7d7640fba8fc2ab4e0e3250789491e7",
+    "role": "region_manager",
+    "display_name": "缪呈荣(成都二负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": "成都二",
+      "group": null
+    }
+  },
+  "region_殷欢": {
+    "password": "620a8484aa14a1bb465ee6a5b9e976469ada804800e706a4b0d935eea310583c",
+    "role": "region_manager",
+    "display_name": "殷欢(成都一负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": "成都一",
+      "group": null
+    }
+  },
+  "region_郭蓉": {
+    "password": "6b92613488e47b13d1bdd288fb050df72434d2564c25e81837c1064cdf2dda0d",
+    "role": "region_manager",
+    "display_name": "郭蓉(成都一负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": "成都一",
+      "group": null
+    }
+  },
+  "region_杨治钢": {
+    "password": "893d4cf30640deab932c3df4ff2989dfa3a84f3a4455ec2abf888671ba4d9241",
+    "role": "region_manager",
+    "display_name": "杨治钢(郑州负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": "郑州",
+      "group": null
+    }
+  },
+  "region_王娜": {
+    "password": "ae58ee30ef5b90fe4fe1be43ad30aa37c1176f888c978ca86c52e5e98d7d0c9d",
+    "role": "region_manager",
+    "display_name": "王娜(郑州负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": "郑州",
+      "group": null
+    }
+  },
+  "region_王云淋": {
+    "password": "6762a4b4384002a3fd4390e4de364e5de8b593177eabe5f47aa827895b100ada",
+    "role": "region_manager",
+    "display_name": "王云淋(成都一负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": "成都一",
+      "group": null
+    }
+  },
+  "group_周康飞": {
+    "password": "0bfef4f6b6d8a1d55f9d5df97589a2b859897765b0a10c522ebf3b84bc3f75a7",
+    "role": "group_leader",
+    "display_name": "周康飞(ZZ-F5组长)",
+    "enabled": true,
+    "data_constraint": {
+      "region": "郑州",
+      "group": "ZZ-F5"
+    }
+  },
+  "group_吕姝璇": {
+    "password": "163763adce24b64a4593441b4bc19e2b32dc0147ec0b6c0d966f5bbd2154694c",
+    "role": "group_leader",
+    "display_name": "吕姝璇(ZZ-F1组长)",
+    "enabled": true,
+    "data_constraint": {
+      "region": "郑州",
+      "group": "ZZ-F1"
+    }
+  },
+  "group_胥涛": {
+    "password": "c4c3803b75f66f12d47fc70163ef8cd24329818cea1534bb47679dc6faec2811",
+    "role": "group_leader",
+    "display_name": "胥涛(CD-F2组长)",
+    "enabled": true,
+    "data_constraint": {
+      "region": "成都一",
+      "group": "CD-F2"
+    }
+  },
+  "group_梁亚文": {
+    "password": "ca38db178222614e82f2afc713f9496d30ac09134a934bc6074d55c2a8131786",
+    "role": "group_leader",
+    "display_name": "梁亚文(ZZ-F2组长)",
+    "enabled": true,
+    "data_constraint": {
+      "region": "郑州",
+      "group": "ZZ-F2"
+    }
+  },
+  "group_舒柏策": {
+    "password": "eeab222388b46f2724c33eb79940ebe2d2406f06f762d5bfb5453180ba18e21d",
+    "role": "region_manager",
+    "display_name": "舒柏策(成都二负责人)",
+    "enabled": true,
+    "data_constraint": {
+      "region": "成都二",
+      "group": null
+    }
+  },
+  "group_唐成达": {
+    "password": "5bff79c3952fd408db2a2b5f7c45f0f7bf768c485cb83807eaf62c53e0bb34b7",
+    "role": "group_leader",
+    "display_name": "唐成达(CD-F1组长)",
+    "enabled": true,
+    "data_constraint": {
+      "region": "成都一",
+      "group": "CD-F1"
+    }
+  },
+  "group_徐杰": {
+    "password": "19ce5de8bb0c6523f4485adc04c835e968a6c0abc5e3970b0fa76244fe9ef8ca",
+    "role": "group_leader",
+    "display_name": "徐杰(ZZ-F3组长)",
+    "enabled": true,
+    "data_constraint": {
+      "region": "郑州",
+      "group": "ZZ-F3"
+    }
+  },
+  "group_赵卓阳": {
+    "password": "436e93c23de35a4719c63cad52831fa0bc27baf28f308446bb20d0f29bb1288e",
+    "role": "group_leader",
+    "display_name": "赵卓阳(ZZ-F4组长)",
+    "enabled": true,
+    "data_constraint": {
+      "region": "郑州",
+      "group": "ZZ-F4"
+    }
+  }
+}

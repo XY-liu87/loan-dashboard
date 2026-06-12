@@ -327,11 +327,11 @@ body {
 <!-- 登录验证遮罩 -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
-    <h2>🔐 贷后数据看板</h2>
+    <h2>🔐 贷后数据看板 <span style="font-size:11px;color:#aaa;">v3.0612</span></h2>
     <p class="login-sub">请输入您的账号和密码</p>
     <input type="text" id="loginUser" placeholder="账号" autofocus>
     <input type="password" id="loginPwd" placeholder="密码">
-    <button class="login-btn" id="loginBtn">登 录</button>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">登 录</button>
     <p class="login-error" id="loginError"></p>
   </div>
 </div>
@@ -915,8 +915,8 @@ function initAuth() {
   xhr.onerror = function() {
     // 后端不可达 → 本地模式
     AUTH_MODE = 'local';
-    // 检查本地 sessionStorage
-    var saved = sessionStorage.getItem('dashboardAuth');
+    // 检查本地 localStorage
+    var saved = localStorage.getItem('dashboardAuth');
     if (saved) {
       try {
         var auth = JSON.parse(saved);
@@ -1133,28 +1133,29 @@ function doLogin() {
   btn.textContent = '登录中...';
   errEl.textContent = '';
 
+  // 模式未确定时，默认用本地模式（GitHub Pages 上更可靠）
+  if (!AUTH_MODE) AUTH_MODE = 'local';
+
   // ---- 本地模式：查本地密码表 ----
   if (AUTH_MODE === 'local') {
     var u = LOCAL_USERS[username];
     if (u && u.pw === password) {
-      AUTH_USER = username;
-      AUTH_ROLE = u.role;
-      AUTH_DATA_CONSTRAINT = u.dc;
-      AUTH_PERMISSIONS = ROLE_PERMS[u.role];
-      // 存 sessionStorage（24小时有效）
-      sessionStorage.setItem('dashboardAuth', JSON.stringify({
+      // 存到 localStorage（比 sessionStorage 更可靠，跨标签页也有效）
+      var authData = {
         user: username, role: u.role, dc: u.dc,
         expires: Date.now() + 24*60*60*1000
-      }));
+      };
+      localStorage.setItem('dashboardAuth', JSON.stringify(authData));
       try { localStorage.setItem('dashboard_user', username); } catch(e) {}
-      window.location.reload();
-    } else {
-      btn.disabled = false;
-      btn.textContent = '登 录';
-      errEl.textContent = '账号或密码错误';
-      pwdInput.value = '';
-      pwdInput.focus();
+      // 刷新页面，让同步预检锁定筛选器后再渲染数据
+      window.location.href = window.location.pathname;
+      return;
     }
+    btn.disabled = false;
+    btn.textContent = '登 录';
+    errEl.textContent = '账号或密码错误';
+    pwdInput.value = '';
+    pwdInput.focus();
     return;
   }
 
@@ -1197,7 +1198,7 @@ function doLogin() {
 // ============================================================
 function doLogout() {
   // 清除本地存储
-  sessionStorage.removeItem('dashboardAuth');
+  localStorage.removeItem('dashboardAuth');
   AUTH_USER = null;
   AUTH_ROLE = null;
   AUTH_PERMISSIONS = null;
@@ -1518,7 +1519,9 @@ function initFilterUI() {
       groupSelect.value = currentVal;
     }
   };
-  window._populateGroupOptions('全部');
+  // 根据数据约束决定初始小组列表（受限用户只看自己地区的小组）
+  var initRegion = (AUTH_DATA_CONSTRAINT && AUTH_DATA_CONSTRAINT.region) ? AUTH_DATA_CONSTRAINT.region : '全部';
+  window._populateGroupOptions(initRegion);
 
   // Update filter info text
   window.updateFilterInfo = function() {
@@ -1625,11 +1628,11 @@ function updateTimeDisplay() {
     }
   } catch(e) {}
 
-  // 方式二：本地 sessionStorage
+  // 方式二：本地 localStorage（跨标签页持久化）
   if (!authed) {
     AUTH_MODE = 'local';
     try {
-      var saved = JSON.parse(sessionStorage.getItem('dashboardAuth') || '{}');
+      var saved = JSON.parse(localStorage.getItem('dashboardAuth') || '{}');
       if (saved.user && saved.expires && Date.now() < saved.expires) {
         AUTH_USER = saved.user;
         AUTH_ROLE = saved.role;
