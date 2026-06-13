@@ -1279,13 +1279,15 @@ function applyFiltersAndRecompute() {
   const segKeys = ['s1','s2','s3','s4','s5','s6','s7'];
   const segLabels = ['10点前','10-12点','12-14点','14-16点','16-18点','18-20点','20-23点'];
 
-  // TODAY_BREAKDOWN — 以 CUMULATIVE_RANK（大表）为主，关联 TODAY_DETAIL
+  // TODAY_BREAKDOWN — 使用原始全量数据（不受权限筛选），所有角色都能看到全部人
+  const origTd = O.TODAY_DETAIL;
+  const origCr = O.CUMULATIVE_RANK;
   const todayIdx = {};
-  TODAY_DETAIL.forEach(r => { todayIdx[r.name] = r; });
+  origTd.forEach(r => { todayIdx[r.name] = r; });
 
   const breakdown = [];
   const seenNames = {};
-  CUMULATIVE_RANK.forEach(rk => {
+  origCr.forEach(rk => {
     seenNames[rk.name] = true;
     const td = todayIdx[rk.name] || {};
     const region = td.region || (rk.group && rk.group.startsWith('ZZ-') ? '郑州' : (rk.group === 'CD-F3' ? '成都二' : rk.group && rk.group.startsWith('CD-') ? '成都一' : ''));
@@ -1299,8 +1301,8 @@ function applyFiltersAndRecompute() {
       firstAmount: rk.firstAmount || 0, firstRate: rkFirstRate
     });
   });
-  // 补充 TODAY_DETAIL 中有但 CUMULATIVE_RANK 中没有的人员
-  TODAY_DETAIL.forEach(td => {
+  // 补充原始 TODAY_DETAIL 中有但 CUMULATIVE_RANK 中没有的人员
+  origTd.forEach(td => {
     if (!seenNames[td.name]) {
       breakdown.push({
         name: td.name, firstBack: 0, oldBack: 0,
