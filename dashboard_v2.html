@@ -3166,9 +3166,9 @@ function renderBreakdownTable() {
 
   // 筛选器（数据约束优先于下拉框值）
   var dc = AUTH_DATA_CONSTRAINT || {};
-  var bdRegion = dc.region || document.getElementById('bdRegionFilter').value;
-  // 组长在今日明细中可查看全部小组，其他角色按数据约束
-  var bdGroup  = (AUTH_ROLE === 'group_leader') ? '全部' : (dc.group || document.getElementById('bdGroupFilter').value);
+  // 今日回款明细总表：所有权限都能看到全部人的数据
+  var bdRegion = document.getElementById('bdRegionFilter').value;
+  var bdGroup  = document.getElementById('bdGroupFilter').value;
   var bdCat = document.getElementById('bdCatFilter').value;
   var nameFilter = (document.getElementById('breakdownNameFilter').value || '').trim().toLowerCase();
 
