@@ -867,14 +867,15 @@ var LOCAL_USERS = {
   'group_舒柏策':{pw:'SBC943',role:'region_manager',dc:{region:'成都二',group:null},dn:'舒柏策(成都二负责人)'},
   'group_唐成达':{pw:'TCD567',role:'group_leader',dc:{region:'成都一',group:'CD-F1'},dn:'唐成达(CD-F1组长)'},
   'group_徐杰':{pw:'XJ458',role:'group_leader',dc:{region:'郑州',group:'ZZ-F3'},dn:'徐杰(ZZ-F3组长)'},
-  'group_赵卓阳':{pw:'ZZY601',role:'group_leader',dc:{region:'郑州',group:'ZZ-F4'},dn:'赵卓阳(ZZ-F4组长)'}
+  'group_赵卓阳':{pw:'ZZY601',role:'group_leader',dc:{region:'郑州',group:'ZZ-F4'},dn:'赵卓阳(ZZ-F4组长)'},
+  '1':{pw:'1',role:'staff',dc:{region:null,group:null},dn:'普通催员'}
 };
 
 var ROLE_PERMS = {
   'admin':{tabs:['overview','ranking','today','group','detail','company-rank','region-rank','group-rank','first-collection','staff-productivity','company-productivity'],label:'👑 总负责人',filter:true,kpi:true},
   'region_manager':{tabs:['overview','ranking','today','group','detail','company-rank','region-rank','group-rank','first-collection','staff-productivity','company-productivity'],label:'🏙️ 地区负责人',filter:true,kpi:true},
   'group_leader':{tabs:['overview','ranking','today','group','detail','group-rank','staff-productivity'],label:'⭐ 组长',filter:true,kpi:true},
-  'staff':{tabs:['overview','today','detail'],label:'👤 员工',filter:false,kpi:false}
+  'staff':{tabs:['today'],label:'👤 员工',filter:false,kpi:false}
 };
 
 // ============================================================
@@ -1288,12 +1289,14 @@ function applyFiltersAndRecompute() {
     seenNames[rk.name] = true;
     const td = todayIdx[rk.name] || {};
     const region = td.region || (rk.group && rk.group.startsWith('ZZ-') ? '郑州' : (rk.group === 'CD-F3' ? '成都二' : rk.group && rk.group.startsWith('CD-') ? '成都一' : ''));
+    var rkFirstRate = (rk.firstAmount > 0) ? (rk.firstBack / rk.firstAmount) : 0;
     breakdown.push({
       name: rk.name, firstBack: rk.firstBack || 0, oldBack: rk.todayOld || 0,
       todayTotal: td.total || 0, group: rk.group, region: region,
       category: rk.category || td.category || '', rank: td.rank,
       assignPrincipal: rk.principal || 0, cumulBack: rk.total || 0,
-        cumulBackRate: (rk.principal > 0) ? (rk.total / rk.principal) : 0
+        cumulBackRate: (rk.principal > 0) ? (rk.total / rk.principal) : 0,
+      firstAmount: rk.firstAmount || 0, firstRate: rkFirstRate
     });
   });
   // 补充 TODAY_DETAIL 中有但 CUMULATIVE_RANK 中没有的人员
@@ -1303,7 +1306,8 @@ function applyFiltersAndRecompute() {
         name: td.name, firstBack: 0, oldBack: 0,
         todayTotal: td.total, group: td.group, region: td.region,
         category: td.category, rank: td.rank,
-        assignPrincipal: 0, cumulBack: 0, cumulBackRate: 0
+        assignPrincipal: 0, cumulBack: 0, cumulBackRate: 0,
+        firstAmount: 0, firstRate: 0
       });
     }
   });
@@ -3163,7 +3167,8 @@ function renderBreakdownTable() {
   // 筛选器（数据约束优先于下拉框值）
   var dc = AUTH_DATA_CONSTRAINT || {};
   var bdRegion = dc.region || document.getElementById('bdRegionFilter').value;
-  var bdGroup  = dc.group  || document.getElementById('bdGroupFilter').value;
+  // 组长在今日明细中可查看全部小组，其他角色按数据约束
+  var bdGroup  = (AUTH_ROLE === 'group_leader') ? '全部' : (dc.group || document.getElementById('bdGroupFilter').value);
   var bdCat = document.getElementById('bdCatFilter').value;
   var nameFilter = (document.getElementById('breakdownNameFilter').value || '').trim().toLowerCase();
 
@@ -3279,7 +3284,7 @@ function renderBreakdownTable() {
   let html = '<table class="heatmap-table"><thead><tr>';
   html += '<th>地区</th><th>类别</th><th>排名</th><th>催员</th>';
   html += '<th>分案剩余本金</th><th>累计回退</th><th>累计回退率</th><th>累计与地区均值差异</th>';
-  html += '<th>首退</th><th>老案</th><th>当日累计回退</th>';
+  html += '<th>首分</th><th>首退</th><th>首催回退率</th><th>老案</th><th>当日累计回退</th>';
   html += '<th>与上一名差异</th><th>当日与地区均值差异</th></tr></thead><tbody>';
 
   let lastRegion = '';
@@ -3316,8 +3321,10 @@ function renderBreakdownTable() {
       const cumulSign = diffCumul >= 0 ? '+' : '-';
       html += `<td data-v="${diffCumul}" style="font-weight:600;color:${cumulColor};">${cumulSign}${fmtYuan(Math.abs(diffCumul))}</td>`;
     }
-    html += tdvNum(r.firstBack, fmtYuan);
-    html += tdvNum(r.oldBack, fmtYuan);
+    html += tdvNum(r.firstAmount, fmtWan);      // 首分
+    html += tdvNum(r.firstBack, fmtYuan);       // 首退
+    html += `<td>${r.firstRate > 0 ? (r.firstRate * 100).toFixed(2) + '%' : '-'}</td>`; // 首催回退率
+    html += tdvNum(r.oldBack, fmtYuan);         // 老案
     html += `<td data-v="${total}" style="font-weight:700;">${total > 0 ? fmtYuan(total) : '-'}</td>`;
     // 与上一名差异
     const diffPrev = prevDiffMap[r.name];

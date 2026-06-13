@@ -89,7 +89,7 @@ for _, r in df.iterrows():
     g = str(r.iloc[2]).strip()
     region = str(r.iloc[3]).strip() if not pd.isna(r.iloc[3]) else ''
     name = str(r.iloc[0]).strip()
-    if g in ('郑州', '成都', '成都一', '成都二', '自然回收') and name != 'w42337':
+    if g in ('郑州', '成都', '自然回收'):
         principal = float(r['分案剩余本金']) if not pd.isna(r['分案剩余本金']) else 0
         total = float(r['累计回退']) if not pd.isna(r['累计回退']) else 0
         today = float(r['当日累计回退']) if not pd.isna(r['当日累计回退']) else 0
@@ -645,7 +645,9 @@ if M1_PATH and os.path.exists(M1_PATH):
                              ('户数回收率', 'accountRate'), ('今日进度', 'todayProgress')]:
                 v = row.get(col, '0')
                 try:
-                    item[key] = float(str(v).replace('%', ''))
+                    val = float(str(v).replace('%', ''))
+                    if val < 1 and val > 0: val = val * 100  # 自动检测小数格式
+                    item[key] = val
                 except:
                     item[key] = 0
             is_xy = item['company'].lower() == 'xy'
@@ -792,7 +794,9 @@ if FC_PATH and os.path.exists(FC_PATH):
                              ('户数回收率', 'accountRate'), ('今日进度', 'todayProgress')]:
                 v = row.get(col, '0')
                 try:
-                    item[key] = float(str(v).replace('%', ''))
+                    val = float(str(v).replace('%', ''))
+                    if val < 1 and val > 0: val = val * 100  # 自动检测小数格式
+                    item[key] = val
                 except:
                     item[key] = 0
             is_xy = item['company'].lower() == 'xy'
